@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+import random
 sys.path.append('./glados_tts')
 
 from glados_tts.glados import tts_runner;
@@ -8,12 +10,18 @@ import speech_recognition as sr;
 
 glados = tts_runner(False, True)
 
+file = open("./phrases.json")
+phrases = json.load(file)
+
 def start_up():
 	glados.speak("oh, its you", True)
 	print("\nWaiting for keyphrase: ")
 
 def take_command():
-    glados.speak("What do you want now?")
+    greetings = phrases["greetings"]
+    greetLen = len(greetings)
+
+    glados.speak(greetings[random.randint(0, greetLen - 1)], True)
     r = sr.Recognizer()
     with sr.Microphone() as source:
         print("Listening...")
@@ -22,10 +30,7 @@ def take_command():
 
     try:
         print("Recognizing...")
-        query = r.recognize_google(audio, language='en')
-        print(f"User said: {query}\n")
-        if "hey" in query:
-            query = query.replace("hey", '')
+        query = r.recognize_google(audio, language='en').lower()
     except Exception as e:
         print(e)
         print("Say that again please...")
