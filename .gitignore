@@ -1,2 +1,4 @@
 models
 *.wav
+config.yaml
+__pycache__
