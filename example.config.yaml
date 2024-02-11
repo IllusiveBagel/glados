@@ -1,0 +1,15 @@
+api:
+  address: "http://127.0.0.1:8123"
+  token: "1234"
+
+lights:
+
+  - light:
+    command: ["turn $on_off $room lights", "turn $on_off the lights in $room", "set $room lights $light_state"]
+    entity: "light.$room"
+    response: ["I have turned $on_off the lights in the $room.", "$room lights are now $on_off.", "Okay. Fine.", "Let me get that for you."]
+
+  - light:
+    command: ["turn $on_off all lights", "set all lights $light_state"]
+    entity: "light.all_lights"
+    response: ["I have turned $on_off all lights."]
