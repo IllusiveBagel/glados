@@ -107,6 +107,17 @@ def match_on_off(command):
 
 		if match:
 			return match[0]
+
+# Returns the brightness from 0-255 from percentage in command		
+def format_brightness(command):
+    # Search for a number followed by a percentage sign
+    match = re.search(r'(\d+)%', command)
+    if match:
+        # Extract the number as an integer
+        percentage = int(match.group(1))
+        # Scale to 0-255 range (rounding to nearest integer)
+        brightness = round(percentage * 255 / 100)
+        return brightness
           
 # Main light control function
 def light_control(command):
@@ -123,11 +134,11 @@ def light_control(command):
 	intent = match_on_off(command)
 
 	entity = ""
+	brightness = ""
 	response = ""
 	
 	if not intent:
-		pass
-		# TODO: Look for "set light to 94%" commands
+		brightness = format_brightness(command)
 
 	if(entity == ""):
 		entity = "light." + room.replace(" ", "_")
@@ -141,10 +152,18 @@ def light_control(command):
 		lightOffLen = len(lightOff)
 		response = lightOff[random.randint(0, lightOffLen - 1)]
 
+	if brightness:
+		lightBrightness = phrases["lightBrightness"]
+		lightBrightnessLen = len(lightBrightness)
+		response = lightBrightness[random.randint(0, lightBrightnessLen - 1)]
+
     # Process as light entity
 	if entity.startswith("light."):
-		light_switch(entity, intent)
-
+		if brightness:
+			light_brightness(entity, brightness)
+		else:
+			light_switch(entity, intent)
+			
 	return response
 
 # Turn lights ON and OFF
@@ -160,6 +179,23 @@ def light_switch(entity, state):
 
 	# Generate data packet
 	payload =  '{"entity_id":"'+entity+'"}'
+
+	# Send request to home assistant and get server response
+	response = requests.post(url, headers=headers, data=payload)
+
+	# Process response from home assistant, error handling if HA responds with something else than HTTP 200 OK
+	if response.status_code == 200:
+		return
+	else:
+		process_error(response)
+
+# Set light brightness
+def light_brightness(entity, brightness):
+	# Set the endpoint where to send the request
+	url = settings_file["api"]["endpoint"] + "services/light/turn_on"
+
+	# Generate data packet
+	payload =  '{"entity_id":"'+entity+'", "brightness":'+str(brightness)+'}'
 
 	# Send request to home assistant and get server response
 	response = requests.post(url, headers=headers, data=payload)
