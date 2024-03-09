@@ -1,34 +1,38 @@
-import os
-from os.path import exists
+import os;
+import io;
+from os.path import exists;
 from pocketsphinx import LiveSpeech;
-import speech_recognition as sr;
 import requests;
 import yaml;
 from playsound import playsound
 from tempfile import NamedTemporaryFile
+import sounddevice as sd
+import numpy as np
+from scipy.io.wavfile import write
 
 settings = "config.yaml"
-headers = {
-    'Content-Type': 'application/json'
-}
 
 def take_command():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold = 1
-        r.adjust_for_ambient_noise(source)
-        audio = r.listen(source)
+    samplerate = 44100  # Hertz
+    duration = 5  # seconds
+    threshold = 20  # audio levels below this value will be considered silence
 
-    try:
-        print("Recognizing...")
-        query = r.recognize_google(audio, language='en').lower()
-        print(f"User said: {query}")
-    except Exception as e:
-        print(e)
-        print("Say that again please...")
-        return "None"
-    return query
+    print("Listening...")
+    while True:
+        audio = sd.rec(int(samplerate * duration), samplerate=samplerate, channels=2, blocking=True)
+        if np.mean(np.abs(audio)) < threshold:
+            break
+
+    print("Recording finished")
+
+    # Convert the audio data to WAV format in memory
+    buffer = io.BytesIO()
+    write(buffer, samplerate, audio)
+    buffer.seek(0)
+    files = {'audioData': ('output.wav', buffer, 'audio/wav')}
+
+    # Return the audio data
+    return files
 
 # Check and load the YAML settings file
 def validate_settings(load=False):
@@ -63,8 +67,9 @@ speech = LiveSpeech(
 
 for phrase in speech:
     try:
+        # TODO: Added Error Handling
         command = take_command()
-        response = requests.post(settings["url"] + "/command", headers=headers, data='{"command":"'+command+'"}', stream=True)
+        response = requests.post(settings["url"] + "/command", files=command)
         with NamedTemporaryFile(delete=False, suffix='.wav') as f:
             f.write(response.content)
             playsound(f.name)
